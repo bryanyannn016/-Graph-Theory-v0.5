@@ -26,6 +26,54 @@ public class GraphProperties extends JPanel {
     private Map<Integer, Double> degreeDistribution; // Stores degree frequency
     
     
+    public Map<Vertex, Integer> computeDegreeCentrality(Vector<Vertex> vList) {
+        Map<Vertex, Integer> degreeCentralityMap = new HashMap<>();
+
+        for (Vertex vertex : vList) {
+            int degree = 0;
+            for (int j = 0; j < vList.size(); j++) {
+                if (adjacencyMatrix[vList.indexOf(vertex)][j] > 0) {
+                    degree++;
+                }
+            }
+            degreeCentralityMap.put(vertex, degree);
+        }
+
+        return degreeCentralityMap;
+    }
+    
+    public Map<Vertex, Double> computeWeightedDegreeCentrality(Vector<Vertex> vList) {
+        Map<Vertex, Double> weightedDegreeCentralityMap = new HashMap<>();
+
+        for (Vertex vertex : vList) {
+            double weightedDegree = 0.0;
+            int vertexIndex = vList.indexOf(vertex);
+
+            // Sum the weights of all edges connected to this vertex
+            for (int j = 0; j < vList.size(); j++) {
+                if (adjacencyMatrix[vertexIndex][j] > 0) {
+                    weightedDegree += adjacencyMatrix[vertexIndex][j];
+                }
+            }
+
+            weightedDegreeCentralityMap.put(vertex, weightedDegree);
+        }
+
+        return weightedDegreeCentralityMap;
+    }
+    
+    public void displayDegreeCentrality(Vector<Vertex> vList) {
+        Map<Vertex, Integer> degreeCentralityMap = computeDegreeCentrality(vList);
+
+        System.out.println("Degree Centrality for Each Vertex:");
+        for (Map.Entry<Vertex, Integer> entry : degreeCentralityMap.entrySet()) {
+            System.out.println("Vertex " + entry.getKey().name + ": " + entry.getValue());
+        }
+    }
+    
+    
+    
+    
     public int[][] generateAdjacencyMatrix(Vector<Vertex> vList, Vector<Edge> eList) {
         adjacencyMatrix = new int[vList.size()][vList.size()];
 
@@ -56,6 +104,7 @@ public class GraphProperties extends JPanel {
 
         getAllCutpoints(adjacencyMatrix, vList.size());
         computeDegreeDistribution(vList); // Compute degree distribution
+        displayDegreeCentrality(vList); // Display degree centrality
         return adjacencyMatrix;
     }
 
@@ -417,49 +466,89 @@ public class GraphProperties extends JPanel {
     }
 
     public void drawAdjacencyMatrix(Graphics g, Vector<Vertex> vList, int x, int y) {
-        int cSize = 20;
+        int cSize = 20; // Cell size for the matrix
         g.setColor(Color.LIGHT_GRAY);
         g.fillRect(x, y - 30, vList.size() * cSize + cSize, vList.size() * cSize + cSize);
         g.setColor(Color.black);
-        g.drawString("AdjacencyMatrix", x, y - cSize);
+        g.drawString("Adjacency Matrix", x, y - cSize);
+
+        // Draw vertex names and adjacency matrix
         for (int i = 0; i < vList.size(); i++) {
             g.setColor(Color.RED);
-            g.drawString(vList.get(i).name, x + cSize + i * cSize, y);
-            g.drawString(vList.get(i).name, x, cSize + i * cSize + y);
+            g.drawString(vList.get(i).name, x + cSize + i * cSize, y); // Column headers
+            g.drawString(vList.get(i).name, x, cSize + i * cSize + y); // Row headers
             g.setColor(Color.black);
             for (int j = 0; j < vList.size(); j++) {
-                g.drawString("" + adjacencyMatrix[i][j], x + cSize * (j + 1), y + cSize * (i + 1));
+                g.drawString("" + adjacencyMatrix[i][j], x + cSize * (j + 1), y + cSize * (i + 1)); // Matrix values
             }
         }
 
-        // Add here the showing of the cutpoints and bridges
+        // Calculate weighted degree centrality for each vertex
+        Map<Vertex, Double> weightedDegreeCentralityMap = computeWeightedDegreeCentrality(vList);
+
+        // Display weighted degree centrality below the adjacency matrix in a 3x3 setup
+        g.drawString("Weighted Degree Centrality:", x, y + (vList.size() + 2) * cSize);
+        int spacerX = 0; // Horizontal spacing
+        int spacerY = 0; // Vertical spacing
+        int nodesPerLine = 3; // Number of nodes per line
+        int count = 0; // Counter for nodes in the current line
+
+        for (Map.Entry<Vertex, Double> entry : weightedDegreeCentralityMap.entrySet()) {
+            String centralityText = entry.getKey().name + ": " + entry.getValue();
+            g.drawString(centralityText, x + spacerX, y + (vList.size() + 3) * cSize + spacerY);
+            spacerX += 80; // Adjust horizontal spacing between vertex labels
+
+            count++;
+            if (count % nodesPerLine == 0) { // Move to the next line after 3 nodes
+                spacerX = 0; // Reset horizontal spacing
+                spacerY += 15; // Reduced vertical spacing for the next line
+            }
+        }
+
+        // Calculate unweighted degree centrality for each vertex
+        Map<Vertex, Integer> degreeCentralityMap = computeDegreeCentrality(vList);
+
+        // Display unweighted degree centrality below the weighted degree centrality in a 3x3 setup
+        g.drawString("Degree Centrality:", x, y + (vList.size() + 5) * cSize + spacerY); // Adjusted vertical position
+        spacerX = 0; // Reset horizontal spacing
+        count = 0; // Reset counter for nodes in the current line
+
+        for (Map.Entry<Vertex, Integer> entry : degreeCentralityMap.entrySet()) {
+            String centralityText = entry.getKey().name + ": " + entry.getValue();
+            g.drawString(centralityText, x + spacerX, y + (vList.size() + 6) * cSize + spacerY); // Adjusted vertical position
+            spacerX += 60; // Adjust horizontal spacing between vertex labels
+
+            count++;
+            if (count % nodesPerLine == 0) { // Move to the next line after 3 nodes
+                spacerX = 0; // Reset horizontal spacing
+                spacerY += 15; // Reduced vertical spacing for the next line
+            }
+        }
+
+        // Display cutpoints
         boolean[] isAP = getAllCutpoints(adjacencyMatrix, vList.size());
-
-        g.drawString("Cutpoints", x,  2*cSize + y + (vList.size() * cSize));
-
-        int spacer = 0;
+        g.drawString("Cutpoints:", x, y + (vList.size() + 8) * cSize + spacerY); // Adjusted vertical position
+        spacerX = 0;
         for (int u = 0; u < vList.size(); u++) {
-            if (isAP[u] == true) {
-                g.drawString(" " + u, 10 + x + spacer, 2 * cSize + y / 2 + y + (vList.size() * cSize));
-                spacer = spacer + 15;
+            if (isAP[u]) {
+                g.drawString(" " + u, x + spacerX, y + (vList.size() + 9) * cSize + spacerY); // Adjusted vertical position
+                spacerX += 15; // Adjust spacing between cutpoints
             }
         }
 
-        g.drawString("Bridges", x,  2*cSize + 2*y + (vList.size() * cSize));
-
+        // Display bridges
         GraphProperties gp = GraphProperties.getInstance();
-
         List<String> bridgeStrings = new ArrayList<>();
         for (List<Integer> bridge : gp.bridges) {
             String bridgeString = String.format("(%d-%d)", bridge.get(0), bridge.get(1));
             bridgeStrings.add(bridgeString);
         }
-        int space = 0;
-        for (int i = 0; i < bridgeStrings.size(); i++){
-            g.drawString(bridgeStrings.get(i),10 + x + space,  2*cSize + 2*y + y/2 + (vList.size() * cSize));
-            space = space + 35;
+        g.drawString("Bridges:", x, y + (vList.size() + 10) * cSize + spacerY); // Adjusted vertical position
+        spacerX = 0;
+        for (String bridge : bridgeStrings) {
+            g.drawString(bridge, x + spacerX, y + (vList.size() + 11) * cSize + spacerY); // Adjusted vertical position
+            spacerX += 35; // Adjust spacing between bridges
         }
-
     }
 
     public void drawDistanceMatrix(Graphics g, Vector<Vertex> vList, int x, int y) {
